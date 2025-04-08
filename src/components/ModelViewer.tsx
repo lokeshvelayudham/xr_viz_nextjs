@@ -5,9 +5,14 @@ import type React from "react"
 import { useEffect, useRef, useState } from "react"
 
 import * as THREE from "three"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader"
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
+// import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader"
+// import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
+
+// These imports should work if you have three.js installed
+import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js"
 import {
   Compass,
   ArrowUp,
@@ -16,9 +21,9 @@ import {
   ArrowRight,
   Loader2,
   Info,
-  Fullscreen,
+  // Fullscreen,
   X,
-  Maximize2,
+  // Maximize2,
   Home,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,7 +32,6 @@ import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 
 interface CameraViewConfig {
-  // This vector represents the desired direction relative to the model's center.
   direction: [number, number, number]
 }
 
@@ -35,7 +39,6 @@ interface ModelViewerProps {
   modelUrl: string
 }
 
-// Define preset view directions (normalized later in code)
 const cameraViews: Record<string, CameraViewConfig> = {
   front: { direction: [0, 0, 1] },
   back: { direction: [0, 0, -1] },
@@ -68,7 +71,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ modelUrl = "" }) => {
     const size = box.getSize(new THREE.Vector3()).length()
     const center = box.getCenter(new THREE.Vector3())
 
-    // Compute desired distance (based on your previous logic)
     const distance = size * 0.75
     distanceRef.current = distance
 
@@ -151,44 +153,54 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ modelUrl = "" }) => {
     controls.dampingFactor = 0.05
     controlsRef.current = controls
 
-    // Load model with DRACOLoader (remove if you prefer not to use Draco)
+    // Load model with DRACOLoader - compressed glb loader
+    // Note: Ensure the DRACOLoader decoder files are served from the correct path
+    // You can use a CDN or host them yourself
     const loader = new GLTFLoader()
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath("/draco/") // Ensure that the /draco/ folder is served correctly
+    dracoLoader.setDecoderPath("/draco/") 
     loader.setDRACOLoader(dracoLoader)
     setIsLoading(true)
+
     loader.load(
       modelUrl,
-      (gltf) => {
-        // Remove any existing model
-        if (modelRef.current) {
-          scene.remove(modelRef.current)
-        }
+      (gltf: GLTF) => {
+      
+      if (modelRef.current) {
+        scene.remove(modelRef.current)
+      }
 
-        modelRef.current = gltf.scene
+      modelRef.current = gltf.scene
+      if (modelRef.current) {
         scene.add(modelRef.current)
+      }
 
-        // Enable shadows on meshes
-        modelRef.current.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.castShadow = true
-            child.receiveShadow = true
-          }
-        })
+      // Enable shadows on meshes
+      modelRef.current?.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh) {
+        child.castShadow = true
+        child.receiveShadow = true
+        }
+      })
 
-        setStatus(`Model loaded: ${modelUrl ? modelUrl.split("/").pop() : "Unknown"}`)
-        setIsLoading(false)
-        fitToView()
+      setStatus(`Model loaded: ${modelUrl ? modelUrl.split("/").pop() : "Unknown"}`)
+      setIsLoading(false)
+      fitToView()
       },
-      (xhr) => {
-        const percent = (xhr.loaded / xhr.total) * 100
-        setLoadingProgress(percent)
-        setStatus(`Loading model: ${percent.toFixed(2)}%`)
+      (xhr: ProgressEvent<EventTarget>) => {
+      const percent = (xhr.loaded / xhr.total) * 100
+      setLoadingProgress(percent)
+      setStatus(`Loading model: ${percent.toFixed(2)}%`)
       },
-      (error) => {
+      (error: unknown) => {
+      if (error instanceof ErrorEvent) {
         console.error("Error loading model:", error)
         setStatus(`Error loading model: ${error.message}`)
-        setIsLoading(false)
+      } else {
+        console.error("Unknown error loading model:", error)
+        setStatus("Error loading model: Unknown error")
+      }
+      setIsLoading(false)
       },
     )
 
@@ -280,24 +292,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ modelUrl = "" }) => {
         <span>{status}</span>
       </div>
 
-      {/* Fullscreen button */}
-      <Button
-        variant="outline"
-        size="icon"
-        className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm border-gray-800 hover:bg-gray-800/70 z-10 text-white rounded-full h-9 w-9"
-        onClick={() => {
-          if (mountRef.current) {
-            if (document.fullscreenElement) {
-              document.exitFullscreen()
-            } else {
-              mountRef.current.requestFullscreen()
-            }
-          }
-        }}
-      >
-        <Fullscreen className="h-4 w-4 text-white" />
-      </Button>
-
+      
       {/* Bottom control bar */}
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
         <div className="bg-black/70 backdrop-blur-md border border-gray-800 rounded-full px-1.5 py-1.5 flex items-center shadow-lg">
@@ -312,33 +307,14 @@ const ModelViewer: React.FC<ModelViewerProps> = ({ modelUrl = "" }) => {
                     className="h-10 w-10 rounded-full text-white hover:bg-gray-800/70"
                     onClick={fitToView}
                   >
-                    <Maximize2 className="h-5 w-5" />
+                    <Home className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Fit to View</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-full text-white hover:bg-gray-800/70"
-                    onClick={() => {
-                      if (controlsRef.current) {
-                        controlsRef.current.reset()
-                        setActiveView(null)
-                      }
-                    }}
-                  >
-                    <Home className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Reset View</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            
 
             <TooltipProvider>
               <Tooltip>

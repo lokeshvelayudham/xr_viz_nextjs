@@ -1,5 +1,5 @@
 'use client';
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic';
 // import ThreeScene from '@/components/ThreeScene';
 import ModelViewer from '@/components/ModelViewer';
 // const ModelViewer = dynamic(() => import('@/components/ModelViewer'), { ssr: false });
