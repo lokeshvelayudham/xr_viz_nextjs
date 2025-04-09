@@ -2,6 +2,7 @@
   "name": "xr_viz_nextjs",
   "version": "0.1.0",
   "private": true,
+  "author": "Lokesh Poluru Velayudham",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

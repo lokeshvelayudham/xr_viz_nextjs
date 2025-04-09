@@ -1,104 +1,113 @@
 'use client'
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import dynamic from 'next/dynamic'
+import { motion, AnimatePresence } from 'framer-motion'
+import Slicer from '@/components/Slicer'
 
-// Dynamic import for ModelViewer with SSR disabled (WebXR + three.js-friendly)
-const ModelViewer = dynamic(() => import('@/components/ModelViewer'), { ssr: false })
+const ModelViewer = dynamic(() => import('@/components/ModelViewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-black">
+      <div className="text-xs tracking-widest text-gray-500 animate-pulse">LOADING...</div>
+    </div>
+  )
+})
 
-// Placeholder Slicer Component
-const Slicer = ({ modelUrl }: { modelUrl: string }) => (
-  <div className="w-full h-full bg-gray-950 flex items-center justify-center text-gray-400">
-    Slicer Placeholder for: {modelUrl.split('/').pop()}
-  </div>
-)
 
-export default function WebXRLayout() {
+export default function XRPage() {
   const [activeTab, setActiveTab] = useState<'model' | 'slicer'>('model')
   const [selectedModel, setSelectedModel] = useState<string>('/models/1_1.glb')
 
-  const handleTabChange = (tab: 'model' | 'slicer') => setActiveTab(tab)
-  const handleModelChange = (modelUrl: string) => setSelectedModel(modelUrl)
+  const models = [
+    { name: 'CV-1', path: '/models/1_1.glb' },
+    { name: 'CV-2', path: '/models/1_2.glb' },
+    { name: 'CV-3', path: '/models/1_3.glb' },
+  ]
 
   return (
-    <div className="flex flex-col h-screen w-full bg-black text-white overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-black text-gray-300 overflow-hidden">
       {/* Top Tab Bar */}
-      <div className="flex justify-center items-center bg-gray-900 border-b border-gray-800 shadow-md">
-        <div className="flex space-x-2 p-2">
-          <Button
-            variant={activeTab === 'model' ? 'default' : 'ghost'}
-            className={cn(
-              'text-white rounded-xl px-6 py-2',
-              activeTab === 'model' ? 'bg-primary' : 'hover:bg-gray-800'
-            )}
-            onClick={() => handleTabChange('model')}
-          >
-            Model Viewer
-          </Button>
-          <Button
-            variant={activeTab === 'slicer' ? 'default' : 'ghost'}
-            className={cn(
-              'text-white rounded-xl px-6 py-2',
-              activeTab === 'slicer' ? 'bg-primary' : 'hover:bg-gray-800'
-            )}
-            onClick={() => handleTabChange('slicer')}
-          >
-            Slicer
-          </Button>
+      <motion.div 
+        className="fixed top-4 left-1/2 transform -translate-x-1/2 z-30"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+      >
+        <div className="flex p-0.5 rounded-full bg-black/80 backdrop-blur-md border border-gray-800/50">
+          {['model', 'slicer'].map((tab) => (
+            <Button
+              key={tab}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'rounded-full px-4 py-1 text-xs tracking-wider',
+                activeTab === tab
+                  ? 'text-white bg-gray-800/60'
+                  : 'text-gray-500 hover:text-white'
+              )}
+              onClick={() => setActiveTab(tab as 'model' | 'slicer')}
+            >
+              {tab.toUpperCase()}
+            </Button>
+          ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Content Area */}
-      <div className="flex-grow relative overflow-hidden">
-        {/* Keep both components mounted; use visibility instead of conditionally rendering */}
-        <div className={cn('absolute inset-0', activeTab !== 'model' && 'hidden')}>
-          <ModelViewer modelUrl={selectedModel} />
-        </div>
-        <div className={cn('absolute inset-0', activeTab !== 'slicer' && 'hidden')}>
-          <Slicer modelUrl={selectedModel} />
-        </div>
+      <div className="flex-grow relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0"
+          >
+            {activeTab === 'model' ? (
+              <ModelViewer modelUrl={selectedModel} />
+            ) : (
+              <Slicer  modelUrl={selectedModel} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Bottom Model Selector */}
-      <div className="bg-gray-900 border-t border-gray-800 p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center gap-4">
-          <span className="text-sm text-gray-400">Select Model:</span>
-          <div className="flex gap-2">
+      {/* Model Selector (positioned above branding) */}
+      <motion.div
+        className="fixed bottom-16 left-1/2 transform -translate-x-1/2 z-30"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+      >
+        <div className="flex gap-1 p-1 rounded-full bg-black/70 backdrop-blur-md border border-gray-800/50">
+          {models.map((model) => (
             <Button
-              variant="secondary"
+              key={model.path}
+              variant="ghost"
+              size="sm"
               className={cn(
-                'rounded-lg bg-gray-800 hover:bg-gray-700 text-white',
-                selectedModel === '/models/1_1.glb' && 'border border-primary'
+                'rounded-full px-3 py-1 text-xs',
+                selectedModel === model.path
+                  ? 'text-white bg-gray-800/60'
+                  : 'text-gray-500 hover:text-white'
               )}
-              onClick={() => handleModelChange('/models/1_1.glb')}
+              onClick={() => setSelectedModel(model.path)}
             >
-              Model 1
+              {model.name}
             </Button>
-            <Button
-              variant="secondary"
-              className={cn(
-                'rounded-lg bg-gray-800 hover:bg-gray-700 text-white',
-                selectedModel === '/models/2_1.glb' && 'border border-primary'
-              )}
-              onClick={() => handleModelChange('/models/2_1.glb')}
-            >
-              Model 2
-            </Button>
-            <Button
-              variant="secondary"
-              className={cn(
-                'rounded-lg bg-gray-800 hover:bg-gray-700 text-white',
-                selectedModel === '/models/3_1.glb' && 'border border-primary'
-              )}
-              onClick={() => handleModelChange('/models/3_1.glb')}
-            >
-              Model 3
-            </Button>
-          </div>
+          ))}
         </div>
-      </div>
+      </motion.div>
+
+      {/* Subtle Branding */}
+      <motion.div
+        className="fixed bottom-2 left-2 text-[0.6rem] text-gray-600 tracking-widest"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        BioInVision
+      </motion.div>
     </div>
   )
 }
