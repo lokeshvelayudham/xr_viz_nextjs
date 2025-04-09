@@ -244,9 +244,14 @@ const ModelViewer = forwardRef<ModelViewerHandle, ModelViewerProps>(
           fitToView();
         },
         (xhr) => {
-          const percent = (xhr.loaded / xhr.total) * 100;
-          setLoadingProgress(percent);
-          setStatus(`Loading model: ${percent.toFixed(2)}%`);
+          if (xhr.total && xhr.total > 0) {
+            const percent = (xhr.loaded / xhr.total) * 100;
+            setLoadingProgress(percent);
+            setStatus(`Loading model: ${percent.toFixed(2)}%`);
+          } else {
+            setLoadingProgress(0);
+            setStatus("Loading model...");
+          }
         },
         (error) => {
           console.error("Error loading model:", error);
